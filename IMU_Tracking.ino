@@ -1,118 +1,203 @@
-/************************************************************
-MPU9250_Basic
- Basic example sketch for MPU-9250 DMP Arduino Library 
-Jim Lindblom @ SparkFun Electronics
-original creation date: November 23, 2016
-https://github.com/sparkfun/SparkFun_MPU9250_DMP_Arduino_Library
-This example sketch demonstrates how to initialize the 
-MPU-9250, and stream its sensor outputs to a serial monitor.
-Development environment specifics:
-Arduino IDE 1.6.12
-SparkFun 9DoF Razor IMU M0
-Supported Platforms:
-- ATSAMD21 (Arduino Zero, SparkFun SAMD21 Breakouts)
-*************************************************************/
-#include <SparkFunMPU9250-DMP.h>
+#include <Wire.h>
+#include <TimerOne.h>
 
-#define SerialPort SerialUSB
+#define    MPU9250_ADDRESS            0x68
+#define    MAG_ADDRESS                0x0C
 
-MPU9250_DMP imu;
+#define    GYRO_FULL_SCALE_250_DPS    0x00  
+#define    GYRO_FULL_SCALE_500_DPS    0x08
+#define    GYRO_FULL_SCALE_1000_DPS   0x10
+#define    GYRO_FULL_SCALE_2000_DPS   0x18
 
-void setup() 
+#define    ACC_FULL_SCALE_2_G        0x00  
+#define    ACC_FULL_SCALE_4_G        0x08
+#define    ACC_FULL_SCALE_8_G        0x10
+#define    ACC_FULL_SCALE_16_G       0x18
+
+
+
+// This function read Nbytes bytes from I2C device at address Address. 
+// Put read bytes starting at register Register in the Data array. 
+void I2Cread(uint8_t Address, uint8_t Register, uint8_t Nbytes, uint8_t* Data)
 {
-  SerialPort.begin(115200);
-
-  // Call imu.begin() to verify communication with and
-  // initialize the MPU-9250 to it's default values.
-  // Most functions return an error code - INV_SUCCESS (0)
-  // indicates the IMU was present and successfully set up
-  if (imu.begin() != INV_SUCCESS)
-  {
-    while (1)
-    {
-      SerialPort.println("Unable to communicate with MPU-9250");
-      SerialPort.println("Check connections, and try again.");
-      SerialPort.println();
-      delay(5000);
-    }
-  }
-
-  // Use setSensors to turn on or off MPU-9250 sensors.
-  // Any of the following defines can be combined:
-  // INV_XYZ_GYRO, INV_XYZ_ACCEL, INV_XYZ_COMPASS,
-  // INV_X_GYRO, INV_Y_GYRO, or INV_Z_GYRO
-  // Enable all sensors:
-  imu.setSensors(INV_XYZ_GYRO | INV_XYZ_ACCEL | INV_XYZ_COMPASS);
-
-  // Use setGyroFSR() and setAccelFSR() to configure the
-  // gyroscope and accelerometer full scale ranges.
-  // Gyro options are +/- 250, 500, 1000, or 2000 dps
-  imu.setGyroFSR(2000); // Set gyro to 2000 dps
-  // Accel options are +/- 2, 4, 8, or 16 g
-  imu.setAccelFSR(2); // Set accel to +/-2g
-  // Note: the MPU-9250's magnetometer FSR is set at 
-  // +/- 4912 uT (micro-tesla's)
-
-  // setLPF() can be used to set the digital low-pass filter
-  // of the accelerometer and gyroscope.
-  // Can be any of the following: 188, 98, 42, 20, 10, 5
-  // (values are in Hz).
-  imu.setLPF(5); // Set LPF corner frequency to 5Hz
-
-  // The sample rate of the accel/gyro can be set using
-  // setSampleRate. Acceptable values range from 4Hz to 1kHz
-  imu.setSampleRate(10); // Set sample rate to 10Hz
-
-  // Likewise, the compass (magnetometer) sample rate can be
-  // set using the setCompassSampleRate() function.
-  // This value can range between: 1-100Hz
-  imu.setCompassSampleRate(10); // Set mag rate to 10Hz
-}
-
-void loop() 
-{
-  // dataReady() checks to see if new accel/gyro data
-  // is available. It will return a boolean true or false
-  // (New magnetometer data cannot be checked, as the library
-  //  runs that sensor in single-conversion mode.)
-  if ( imu.dataReady() )
-  {
-    // Call update() to update the imu objects sensor data.
-    // You can specify which sensors to update by combining
-    // UPDATE_ACCEL, UPDATE_GYRO, UPDATE_COMPASS, and/or
-    // UPDATE_TEMPERATURE.
-    // (The update function defaults to accel, gyro, compass,
-    //  so you don't have to specify these values.)
-    imu.update(UPDATE_ACCEL | UPDATE_GYRO | UPDATE_COMPASS);
-    printIMUData();
-  }
-}
-
-void printIMUData(void)
-{  
-  // After calling update() the ax, ay, az, gx, gy, gz, mx,
-  // my, mz, time, and/or temerature class variables are all
-  // updated. Access them by placing the object. in front:
-
-  // Use the calcAccel, calcGyro, and calcMag functions to
-  // convert the raw sensor readings (signed 16-bit values)
-  // to their respective units.
-  float accelX = imu.calcAccel(imu.ax);
-  float accelY = imu.calcAccel(imu.ay);
-  float accelZ = imu.calcAccel(imu.az);
-  float gyroX = imu.calcGyro(imu.gx);
-  float gyroY = imu.calcGyro(imu.gy);
-  float gyroZ = imu.calcGyro(imu.gz);
-  float magX = imu.calcMag(imu.mx);
-  float magY = imu.calcMag(imu.my);
-  float magZ = imu.calcMag(imu.mz);
+  // Set register address
+  Wire.beginTransmission(Address);
+  Wire.write(Register);
+  Wire.endTransmission();
   
-  SerialPort.println("Accel: " + String(accelX) + ", " +
-              String(accelY) + ", " + String(accelZ) + " g");
-  SerialPort.println("Gyro: " + String(gyroX) + ", " +
-              String(gyroY) + ", " + String(gyroZ) + " dps");
-  SerialPort.println("Mag: " + String(magX) + ", " +
-              String(magY) + ", " + String(magZ) + " uT");
-  SerialPort.println("Time: " + String(imu.time) + " ms");
-  SerialPort.println();
+  // Read Nbytes
+  Wire.requestFrom(Address, Nbytes); 
+  uint8_t index=0;
+  while (Wire.available())
+    Data[index++]=Wire.read();
 }
+
+
+// Write a byte (Data) in device (Address) at register (Register)
+void I2CwriteByte(uint8_t Address, uint8_t Register, uint8_t Data)
+{
+  // Set register address
+  Wire.beginTransmission(Address);
+  Wire.write(Register);
+  Wire.write(Data);
+  Wire.endTransmission();
+}
+
+
+
+// Initial time
+long int ti;
+volatile bool intFlag=false;
+
+// Initializations
+void setup()
+{
+  // Arduino initializations
+  Wire.begin();
+  Serial.begin(115200);
+  
+  // Set accelerometers low pass filter at 5Hz
+  I2CwriteByte(MPU9250_ADDRESS,29,0x06);
+  // Set gyroscope low pass filter at 5Hz
+  I2CwriteByte(MPU9250_ADDRESS,26,0x06);
+ 
+  
+  // Configure gyroscope range
+  I2CwriteByte(MPU9250_ADDRESS,27,GYRO_FULL_SCALE_1000_DPS);
+  // Configure accelerometers range
+  I2CwriteByte(MPU9250_ADDRESS,28,ACC_FULL_SCALE_4_G);
+  // Set by pass mode for the magnetometers
+  I2CwriteByte(MPU9250_ADDRESS,0x37,0x02);
+  
+  // Request continuous magnetometer measurements in 16 bits
+  I2CwriteByte(MAG_ADDRESS,0x0A,0x16);
+  
+   pinMode(13, OUTPUT);
+  Timer1.initialize(10000);         // initialize timer1, and set a 1/2 second period
+  Timer1.attachInterrupt(callback);  // attaches callback() as a timer overflow interrupt
+  
+  
+  // Store initial time
+  ti=millis();
+}
+
+
+
+
+
+// Counter
+long int cpt=0;
+
+void callback()
+{ 
+  intFlag=true;
+  digitalWrite(13, digitalRead(13) ^ 1);
+}
+
+// Main loop, read and display data
+void loop()
+{
+  while (!intFlag);
+  intFlag=false;
+  
+  // Display time
+  Serial.print (millis()-ti,DEC);
+  Serial.print ("\t");
+
+  
+  // _______________
+  // ::: Counter :::
+  
+  // Display data counter
+//  Serial.print (cpt++,DEC);
+//  Serial.print ("\t");
+  
+ 
+ 
+  // ____________________________________
+  // :::  accelerometer and gyroscope ::: 
+
+  // Read accelerometer and gyroscope
+  uint8_t Buf[14];
+  I2Cread(MPU9250_ADDRESS,0x3B,14,Buf);
+  
+  // Create 16 bits values from 8 bits data
+  
+  // Accelerometer
+  int16_t ax=-(Buf[0]<<8 | Buf[1]);
+  int16_t ay=-(Buf[2]<<8 | Buf[3]);
+  int16_t az=Buf[4]<<8 | Buf[5];
+
+  // Gyroscope
+  int16_t gx=-(Buf[8]<<8 | Buf[9]);
+  int16_t gy=-(Buf[10]<<8 | Buf[11]);
+  int16_t gz=Buf[12]<<8 | Buf[13];
+  
+    // Display values
+  
+  // Accelerometer
+  Serial.print (ax,DEC); 
+  Serial.print ("\t");
+  Serial.print (ay,DEC);
+  Serial.print ("\t");
+  Serial.print (az,DEC);  
+  Serial.print ("\t");
+  
+  // Gyroscope
+  Serial.print (gx,DEC); 
+  Serial.print ("\t");
+  Serial.print (gy,DEC);
+  Serial.print ("\t");
+  Serial.print (gz,DEC);  
+  Serial.print ("\t");
+
+  
+  // _____________________
+  // :::  Magnetometer ::: 
+
+  
+  // Read register Status 1 and wait for the DRDY: Data Ready
+  
+  uint8_t ST1;
+  do
+  {
+    I2Cread(MAG_ADDRESS,0x02,1,&ST1);
+  }
+  while (!(ST1&0x01));
+
+  // Read magnetometer data  
+  uint8_t Mag[7];  
+  I2Cread(MAG_ADDRESS,0x03,7,Mag);
+  
+
+  // Create 16 bits values from 8 bits data
+  
+  // Magnetometer
+  int16_t mx=-(Mag[3]<<8 | Mag[2]);
+  int16_t my=-(Mag[1]<<8 | Mag[0]);
+  int16_t mz=-(Mag[5]<<8 | Mag[4]);
+  
+  
+  // Magnetometer
+  Serial.print (mx+200,DEC); 
+  Serial.print ("\t");
+  Serial.print (my-70,DEC);
+  Serial.print ("\t");
+  Serial.print (mz-700,DEC);  
+  Serial.print ("\t");
+  
+  
+  
+  // End of line
+  Serial.println("");
+//  delay(100);    
+}
+
+
+
+
+
+
+
+
+
