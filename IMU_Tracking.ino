@@ -72,10 +72,10 @@ void setup()
   // Request continuous magnetometer measurements in 16 bits
   I2CwriteByte(MAG_ADDRESS,0x0A,0x16);
   
-   pinMode(13, OUTPUT);
-  Timer1.initialize(10000);         // initialize timer1, and set a 1/2 second period
-  Timer1.attachInterrupt(callback);  // attaches callback() as a timer overflow interrupt
-  
+//   pinMode(13, OUTPUT);
+//  Timer1.initialize(10000);         // initialize timer1, and set a 1/2 second period
+//  Timer1.attachInterrupt(callback);  // attaches callback() as a timer overflow interrupt
+//  
   
   // Store initial time
   ti=millis();
@@ -88,17 +88,17 @@ void setup()
 // Counter
 long int cpt=0;
 
-void callback()
-{ 
-  intFlag=true;
-  digitalWrite(13, digitalRead(13) ^ 1);
-}
+//void callback()
+//{ 
+//  intFlag=true;
+//  digitalWrite(13, digitalRead(13) ^ 1);
+//}
 
 // Main loop, read and display data
 void loop()
 {
-  while (!intFlag);
-  intFlag=false;
+//  while (!intFlag);
+//  intFlag=false;
   
   // Display time
   Serial.print (millis()-ti,DEC);
